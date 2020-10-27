@@ -9,28 +9,33 @@
 // Webserver on port 80
 ESP8266WebServer server(80);
 
+#define SERVO_PIN 4
+
 Servo myservo;
 // cable colors SG90 servo:
 // brown=GND, red=5V, orange=pulse 
 
 const int FeederPos[] = {2702,2559,2416,2273,2130,1987,1844,1701,1558,1415,1272,1129,986,843,700,0};
 int ServoPos = 0; // to be persisted
+uint32_t LastServoMove = 1;
 
 void refill() {
+  myservo.attach(SERVO_PIN);
   ServoPos = 0;
   int ms = FeederPos[ServoPos];
   myservo.writeMicroseconds(ms); 
-  delay(2000);
+  LastServoMove = millis();
 }
 void feed() {
   if (FeederPos[ServoPos+1] ==0) {
     return;
   }
 
+  myservo.attach(SERVO_PIN);
   ServoPos++;
   int ms = FeederPos[ServoPos];
   myservo.writeMicroseconds(ms);
-  delay(500);
+  LastServoMove = millis();
 }
 
 void setup() {
@@ -74,18 +79,6 @@ void setup() {
     server.send(302, "text/plain","ok");  
     server.client().stop();  
   });
-  server.on("/off", []() {
-    myservo.detach();
-    server.sendHeader("Location", "/",true); 
-    server.send(302, "text/plain","ok");  
-    server.client().stop();  
-  });
-  server.on("/on", []() {
-    myservo.attach(4);
-    server.sendHeader("Location", "/",true); 
-    server.send(302, "text/plain","ok");  
-    server.client().stop();  
-  });
 
   server.onNotFound( []() {
     server.send(404, "text/plain", "not found");
@@ -94,14 +87,17 @@ void setup() {
   Serial.printf("Webserver...\n");
   
   // Servo
-  myservo.attach(4);
+  myservo.attach(SERVO_PIN);
   Serial.printf("servo...\n");
 }
 
 void loop() {
-  //delay(250);
-  //Serial.printf("loop..\n");
-
   ArduinoOTA.handle();  
   server.handleClient();
+  
+  //shut off servo after 5s to stop shaking
+  if (LastServoMove!=0 && LastServoMove+5000 < millis()) {
+    myservo.detach();
+    LastServoMove=0;
+  }
 }

@@ -87,7 +87,7 @@ void Servo::detach()
     _servoMap &= ~(1 << _pin);
     stopWaveform(_pin);
     _attached = false;
-    digitalWrite(_pin, LOW);
+    //digitalWrite(_pin, LOW);
   }
 }
 
